@@ -1,0 +1,60 @@
+{
+    "settings": {
+        "stratagem_menu_key": "ctrl",
+        "global_toggle_hotkey": "",
+        "use_wasd_input": false,
+        "activation_delay": 0.05,
+        "pydirectinput_pause": 0.02,
+        "reminder_opacity": 1.0
+    },
+    "hotkeys": [
+        {
+            "stratagem": "Reinforce",
+            "hotkey": "1"
+        },
+        {
+            "stratagem": "Resupply",
+            "hotkey": "2"
+        },
+        {
+            "stratagem": "RL-77 Airburst Rocket Launcher",
+            "hotkey": "3"
+        },
+        {
+            "stratagem": "EXO-45 Patriot Exosuit",
+            "hotkey": "4"
+        },
+        {
+            "stratagem": "Orbital Napalm Barrage",
+            "hotkey": "5"
+        },
+        {
+            "stratagem": "Eagle Airstrike",
+            "hotkey": "6"
+        },
+        {
+            "stratagem": "Hellbomb",
+            "hotkey": "7"
+        },
+        {
+            "stratagem": "SOS Beacon",
+            "hotkey": "8"
+        },
+        {
+            "stratagem": "SEAF Artillery",
+            "hotkey": "9"
+        },
+        {
+            "stratagem": "",
+            "hotkey": ""
+        },
+        {
+            "stratagem": "",
+            "hotkey": ""
+        },
+        {
+            "stratagem": "",
+            "hotkey": ""
+        }
+    ]
+}

@@ -1,0 +1,65 @@
+<Window x:Class="SCS.UI.PickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SCS.UI"
+        xmlns:core="clr-namespace:SCS.Core"
+        Width="560" Height="620" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource UiFont}" TextOptions.TextFormattingMode="Display">
+
+    <Border Margin="16" CornerRadius="12" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderHiBrush}"
+            BorderThickness="1" Effect="{StaticResource WindowShadow}">
+        <Grid Margin="20,16,20,18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <DockPanel x:Name="Header" Background="Transparent">
+                <TextBlock x:Name="TitleText" Text="SELECT STRATAGEM" Style="{StaticResource SectionTitle}" Margin="0"/>
+                <TextBlock Text="ENTER selects   ESC closes" Style="{StaticResource Caption}" HorizontalAlignment="Right"
+                           Foreground="{StaticResource TextFaintBrush}"/>
+            </DockPanel>
+
+            <Grid Grid.Row="1" Margin="0,14,0,10">
+                <TextBox x:Name="SearchBox" TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown"
+                         Padding="34,8,10,8" FontSize="13"/>
+                <Path Data="M5.5,0 A5.5,5.5 0 1 1 5.49,0 Z M9.5,9.5 L13,13" Stroke="{StaticResource TextDimBrush}" StrokeThickness="1.5"
+                      Margin="12,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"/>
+                <TextBlock x:Name="SearchHint" Text="Search by name, e.g. eagle, sentry, 500" IsHitTestVisible="False"
+                           Margin="35,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextFaintBrush}" FontSize="13"/>
+            </Grid>
+
+            <WrapPanel x:Name="Chips" Grid.Row="2" Margin="0,0,0,8"/>
+
+            <ListBox x:Name="StratList" Grid.Row="3" MouseDoubleClick="List_MouseDoubleClick" KeyDown="List_KeyDown"
+                     VirtualizingPanel.ScrollUnit="Pixel">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type core:Stratagem}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" FontSize="9.5" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <ui:ArrowStrip Grid.Column="1" Code="{Binding Code}" GlyphSize="11" Fill="{StaticResource AccentBrush}"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <DockPanel Grid.Row="4" Margin="0,14,0,0" LastChildFill="False">
+                <Button Content="CLEAR SLOT" DockPanel.Dock="Left" Style="{StaticResource DangerButton}" Click="Clear_Click"/>
+                <Button Content="SELECT" DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="Select_Click" MinWidth="100"/>
+                <Button Content="CANCEL" DockPanel.Dock="Right" Margin="0,0,8,0" IsCancel="True"/>
+            </DockPanel>
+        </Grid>
+    </Border>
+</Window>

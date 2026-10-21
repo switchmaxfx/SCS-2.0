@@ -1,0 +1,204 @@
+<Window x:Class="SCS.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SCS.UI"
+        Width="860" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource UiFont}" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+            <Setter Property="LineHeight" Value="16"/>
+        </Style>
+        <Style x:Key="Value" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="Section" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="16" CornerRadius="12" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderHiBrush}"
+            BorderThickness="1" Effect="{StaticResource WindowShadow}">
+        <Grid Margin="22,18,22,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <DockPanel x:Name="Header" Background="Transparent" Margin="0,0,0,16">
+                <TextBlock Text="SETTINGS" Style="{StaticResource SectionTitle}" Margin="0" FontSize="13"/>
+                <TextBlock Text="saved with the profile" Style="{StaticResource Caption}" HorizontalAlignment="Right"
+                           Foreground="{StaticResource TextFaintBrush}"/>
+            </DockPanel>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ============ LEFT ============ -->
+                <StackPanel>
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="INPUT" Style="{StaticResource SectionTitle}"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Stratagem menu key" Style="{StaticResource Label}"/>
+                                <ui:HotkeyBox x:Name="MenuKeyBox" Grid.Column="1" AllowModifiers="True" Placeholder="L-CTRL"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Master toggle (arm / disarm)" Style="{StaticResource Label}"/>
+                                <ui:HotkeyBox x:Name="ToggleKeyBox" Grid.Column="1" Placeholder="NONE"/>
+                            </Grid>
+                            <CheckBox x:Name="WasdCheck" Content="Send W A S D instead of arrow keys"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="BEHAVIOUR" Style="{StaticResource SectionTitle}"/>
+                            <CheckBox x:Name="BlockCheck" Content="Hide trigger keys from the game"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="46,4,0,12"
+                                       Text="The game never sees the bound key, so pressing 1 to call Reinforce won't also swap your weapon. Left and right mouse are never blocked."/>
+                            <CheckBox x:Name="FocusCheck" Content="Only fire while the game window is focused"/>
+                            <Grid Margin="46,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Process" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBox x:Name="ProcessBox" Grid.Column="1" Padding="8,5" FontFamily="{StaticResource MonoFont}" FontSize="11.5"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}" Margin="0">
+                        <StackPanel>
+                            <TextBlock Text="OVERLAY" Style="{StaticResource SectionTitle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Opacity" Style="{StaticResource Label}"/>
+                                <Slider x:Name="OpacitySlider" Grid.Column="1" Minimum="20" Maximum="100" SmallChange="1" LargeChange="10"
+                                        ValueChanged="OpacitySlider_ValueChanged"/>
+                                <TextBlock x:Name="OpacityValue" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============ RIGHT: timing ============ -->
+                <Border Grid.Column="2" Style="{StaticResource Section}" Margin="0">
+                    <StackPanel>
+                        <TextBlock Text="TIMING" Style="{StaticResource SectionTitle}"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Lag Guard" Style="{StaticResource Label}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                            <Slider x:Name="GuardSlider" Grid.Column="1" Minimum="0" Maximum="120" SmallChange="5" LargeChange="10"
+                                    TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="Timing_ValueChanged"/>
+                            <TextBlock x:Name="GuardValue" Grid.Column="2" Style="{StaticResource Value}"/>
+                        </Grid>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,14"
+                                   Text="Set this to the LOWEST frame rate you hit in big fights. Every press and release is held for at least one frame at that FPS, so the game can't skip it. Lower = safer but slower. 0 turns it off."/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Key hold" Style="{StaticResource Label}"/>
+                            <Slider x:Name="HoldSlider" Grid.Column="1" Minimum="5" Maximum="100" SmallChange="1" LargeChange="5"
+                                    IsSnapToTickEnabled="True" TickFrequency="1" ValueChanged="Timing_ValueChanged"/>
+                            <TextBlock x:Name="HoldValue" Grid.Column="2" Style="{StaticResource Value}"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Key gap" Style="{StaticResource Label}"/>
+                            <Slider x:Name="GapSlider" Grid.Column="1" Minimum="5" Maximum="100" SmallChange="1" LargeChange="5"
+                                    IsSnapToTickEnabled="True" TickFrequency="1" ValueChanged="Timing_ValueChanged"/>
+                            <TextBlock x:Name="GapValue" Grid.Column="2" Style="{StaticResource Value}"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Menu delay" Style="{StaticResource Label}"/>
+                            <Slider x:Name="MenuSlider" Grid.Column="1" Minimum="0" Maximum="300" SmallChange="1" LargeChange="10"
+                                    IsSnapToTickEnabled="True" TickFrequency="1" ValueChanged="Timing_ValueChanged"/>
+                            <TextBlock x:Name="MenuValue" Grid.Column="2" Style="{StaticResource Value}"/>
+                        </Grid>
+
+                        <!-- effective readout -->
+                        <Border Background="{StaticResource InputBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="14,12">
+                            <StackPanel>
+                                <TextBlock Text="EFFECTIVE (after Lag Guard)" Style="{StaticResource Caption}" FontSize="9.5"/>
+                                <TextBlock x:Name="EffectiveText" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                                           Foreground="{StaticResource TextBrush}" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="ExampleText" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                           Foreground="{StaticResource InfoBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <DockPanel Margin="0,12,0,0">
+                            <Button x:Name="TestButton" Content="RUN TIMING TEST" Click="Test_Click" DockPanel.Dock="Left"
+                                    ToolTip="Runs the waits of five 9-arrow sequences without pressing any keys and reports how precise they were"/>
+                            <TextBlock x:Name="TestResult" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                       TextWrapping="Wrap"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <DockPanel Grid.Row="2" Margin="0,18,0,0" LastChildFill="False">
+                <Button Content="RESET TO DEFAULTS" DockPanel.Dock="Left" Click="Reset_Click"/>
+                <Button Content="APPLY" DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="Apply_Click" MinWidth="110"/>
+                <Button Content="CANCEL" DockPanel.Dock="Right" Margin="0,0,8,0" IsCancel="True"/>
+            </DockPanel>
+        </Grid>
+    </Border>
+</Window>
