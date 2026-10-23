@@ -20,6 +20,7 @@ What 2.0 changes:
 ## Features
 
 - 12 slots with a searchable, categorised stratagem picker
+- Stratagem codes kept up to date from the Helldivers 2 wiki
 - Profiles (v1.x profiles load as-is)
 - Master arm/disarm toggle key
 - Optional: hide trigger keys from the game, fire only while the game is focused, WASD mode
@@ -38,9 +39,19 @@ A prebuilt `publish/SCS.exe` (Windows x64, single self-contained file) is includ
 
 GitHub Actions also builds `SCS.exe` on every push. Open the **Actions** tab, then the latest run, then **Artifacts**.
 
-## Adding new stratagems
+## Stratagem codes from the wiki
 
-Edit `Core/Stratagems.cs` and add a line to the right category:
+SCS keeps its stratagem list current using the [Helldivers 2 wiki](https://helldivers.wiki.gg). On startup it checks the wiki at most once a day, adds any new stratagems, and updates codes that changed. The result is saved to `stratagem_cache.json` next to the exe, so it keeps working offline. The built-in list is the fallback if the wiki can't be reached.
+
+Your profiles stay valid when names change: if the wiki's name for a stratagem differs from SCS's (for example "A/AC-8 Autocannon Sentry" vs "Autocannon Sentry"), SCS keeps its own name and accepts the wiki name as an alias.
+
+You can turn automatic checks off or run an update yourself in **Settings > Stratagem codes**.
+
+The idea of reading codes from the wiki comes from [goncaloestrelado/HelldiversMacro](https://github.com/goncaloestrelado/HelldiversMacro).
+
+### Editing the built-in list
+
+The fallback list lives in `Core/Stratagems.cs`. Add a line to the right category:
 
 ```csharp
 ("New Stratagem Name", "DLURD"),

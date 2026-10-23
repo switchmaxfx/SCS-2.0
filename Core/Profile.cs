@@ -177,6 +177,8 @@ public sealed class AppState
     public double? LedLeft { get; set; }
     public double? LedTop { get; set; }
     public bool LedVisible { get; set; }
+    /// <summary>Check the wiki for new stratagem codes at startup (at most once a day).</summary>
+    public bool WikiAutoUpdate { get; set; } = true;
 
     private static string FilePath => Path.Combine(AppContext.BaseDirectory, "scs_state.json");
 

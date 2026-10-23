@@ -17,7 +17,7 @@ public partial class PickerWindow : Window
         Header.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
 
         AddChip("ALL", null, true);
-        foreach (var (cat, _) in Stratagems.Catalog) AddChip(cat.ToUpperInvariant(), cat, false);
+        foreach (var cat in Stratagems.Categories) AddChip(cat.ToUpperInvariant(), cat, false);
 
         Filter();
         var cur = Stratagems.Find(current);
@@ -49,7 +49,7 @@ public partial class PickerWindow : Window
         var terms = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var items = Stratagems.All.Where(s =>
             (_category == null || s.Category == _category) &&
-            terms.All(t => s.Name.Contains(t, StringComparison.OrdinalIgnoreCase) || s.Category.Contains(t, StringComparison.OrdinalIgnoreCase)))
+            terms.All(t => s.SearchText.Contains(t, StringComparison.OrdinalIgnoreCase) || s.Category.Contains(t, StringComparison.OrdinalIgnoreCase)))
             .ToList();
         var prev = StratList.SelectedItem;
         StratList.ItemsSource = items;

@@ -46,7 +46,7 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" FontSize="9.5" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Caption}" FontSize="9.5" Margin="0,2,0,0"/>
                             </StackPanel>
                             <ui:ArrowStrip Grid.Column="1" Code="{Binding Code}" GlyphSize="11" Fill="{StaticResource AccentBrush}"
                                            VerticalAlignment="Center" Margin="12,0,0,0"/>

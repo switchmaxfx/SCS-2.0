@@ -42,6 +42,15 @@ public sealed class SlotViewModel : INotifyPropertyChanged
     public bool IsConflict { get => _isConflict; set => Set(ref _isConflict, value); }
     public bool IsFlashing { get => _isFlashing; set => Set(ref _isFlashing, value); }
 
+    /// <summary>Re-read code/category after the stratagem list changes (wiki update).</summary>
+    public void Refresh()
+    {
+        OnChanged(nameof(Code));
+        OnChanged(nameof(Category));
+        OnChanged(nameof(IsEmpty));
+        OnChanged(nameof(DisplayName));
+    }
+
     public bool IsEmpty => Stratagems.Find(_stratagem) == null;
     public string DisplayName => IsEmpty ? "SELECT STRATAGEM" : _stratagem;
     public string Code => Stratagems.Find(_stratagem)?.Code ?? "";

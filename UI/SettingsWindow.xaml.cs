@@ -7,14 +7,22 @@ namespace SCS.UI;
 public partial class SettingsWindow : Window
 {
     public EngineSettings Result { get; private set; }
+    public bool WikiAutoUpdate => WikiAutoCheck.IsChecked == true;
     private readonly Action<double> _previewOpacity;
+    private readonly Func<string> _wikiStatus;
+    private readonly Func<Task<string>> _wikiUpdate;
     private bool _loading;
 
-    public SettingsWindow(EngineSettings settings, Action<double> previewOpacity)
+    public SettingsWindow(EngineSettings settings, Action<double> previewOpacity,
+        bool wikiAutoUpdate, Func<string> wikiStatus, Func<Task<string>> wikiUpdate)
     {
         InitializeComponent();
         Result = settings;
         _previewOpacity = previewOpacity;
+        _wikiStatus = wikiStatus;
+        _wikiUpdate = wikiUpdate;
+        WikiAutoCheck.IsChecked = wikiAutoUpdate;
+        WikiStatus.Text = wikiStatus();
         Header.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
         Populate(settings);
     }
@@ -122,5 +130,25 @@ public partial class SettingsWindow : Window
         }
         Result = s;
         DialogResult = true;
+    }
+
+    private async void WikiUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        WikiUpdateButton.IsEnabled = false;
+        WikiUpdateButton.Content = "UPDATING...";
+        WikiResult.Visibility = Visibility.Collapsed;
+        try
+        {
+            var msg = await _wikiUpdate();
+            WikiStatus.Text = _wikiStatus();
+            WikiResult.Text = msg;
+            WikiResult.Foreground = (System.Windows.Media.Brush)FindResource(msg.StartsWith("Couldn't") ? "DangerBrush" : "OkBrush");
+            WikiResult.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            WikiUpdateButton.Content = "UPDATE NOW";
+            WikiUpdateButton.IsEnabled = true;
+        }
     }
 }

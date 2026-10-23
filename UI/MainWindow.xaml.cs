@@ -24,11 +24,19 @@ public partial class MainWindow : Window
     private OverlayWindow? _overlay;
     private LedWindow? _led;
     private readonly Storyboard _pulse;
+    private DateTime? _lastWikiFetch;
+    private bool _wikiBusy;
 
     public MainWindow()
     {
         InitializeComponent();
         _pulse = (Storyboard)FindResource("PulseStoryboard");
+
+        // Codes saved from the last wiki update, merged over the built-in list before any profile loads.
+        var wikiCache = WikiStratagems.LoadCache();
+        if (wikiCache != null) Stratagems.ApplyWiki(wikiCache.Entries);
+        _lastWikiFetch = wikiCache?.FetchedUtc;
+        Stratagems.Changed += () => Dispatcher.InvokeAsync(OnCatalogChanged);
 
         for (int i = 0; i < Profile.SlotCount; i++)
         {
@@ -68,6 +76,14 @@ public partial class MainWindow : Window
         if (_state.OverlayVisible) Overlay_Click(this, new RoutedEventArgs());
         if (_state.LedVisible) Led_Click(this, new RoutedEventArgs());
         UpdateArmedVisuals();
+
+        // Daily background check for new or changed stratagem codes.
+        if (_state.WikiAutoUpdate && (_lastWikiFetch == null || DateTime.UtcNow - _lastWikiFetch > WikiStratagems.AutoUpdateInterval))
+        {
+            var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            t.Tick += async (_, _) => { t.Stop(); await UpdateFromWikiAsync(manual: false); };
+            t.Start();
+        }
     }
 
     // ================================================================ profiles
@@ -382,12 +398,87 @@ public partial class MainWindow : Window
         _state.Save();
     }
 
+    // ================================================================ wiki stratagem data
+
+    public string WikiStatusText()
+    {
+        if (_lastWikiFetch is not { } t) return $"Using the built-in list ({Stratagems.All.Count} stratagems). Not updated from the wiki yet.";
+        return $"Updated from the wiki {t.ToLocalTime():MMM d, h:mm tt}. {Stratagems.All.Count} stratagems available.";
+    }
+
+    /// <summary>Fetch codes from the wiki, save them, and merge them in. Returns a one-line result.</summary>
+    public async Task<string> UpdateFromWikiAsync(bool manual)
+    {
+        if (_wikiBusy) return "An update is already running.";
+        _wikiBusy = true;
+        if (manual || !_engine.IsRunning) SetStatus("UPDATING", "getting stratagem codes from the wiki", "InfoBrush");
+        try
+        {
+            var cache = await Task.Run(() => WikiStratagems.FetchAsync());
+            try { WikiStratagems.SaveCache(cache); } catch { /* read-only folder: still use it for this session */ }
+            _lastWikiFetch = cache.FetchedUtc;
+            var r = Stratagems.ApplyWiki(cache.Entries);
+
+            string msg;
+            if (r.Added == 0 && r.CodesChanged == 0) msg = $"Stratagem list is up to date ({r.Total} stratagems).";
+            else
+            {
+                var parts = new List<string>();
+                if (r.Added > 0) parts.Add($"{r.Added} new: {string.Join(", ", r.AddedNames.Take(4))}{(r.Added > 4 ? "..." : "")}");
+                if (r.CodesChanged > 0) parts.Add($"{r.CodesChanged} code{(r.CodesChanged == 1 ? "" : "s")} changed: {string.Join(", ", r.ChangedNames.Take(4))}{(r.CodesChanged > 4 ? "..." : "")}");
+                msg = string.Join("   ", parts);
+            }
+            if (manual || !_engine.IsRunning || r.Added + r.CodesChanged > 0) SetStatus("WIKI SYNCED", msg, "OkBrush");
+            return msg;
+        }
+        catch (Exception ex)
+        {
+            var msg = "Couldn't update from the wiki, so the saved list is still in use. " + Describe(ex);
+            if (manual) SetStatus("WIKI OFFLINE", "couldn't reach the wiki, using the saved list", "DangerBrush");
+            else if (!_engine.IsRunning) UpdateArmedVisuals();
+            return msg;
+        }
+        finally { _wikiBusy = false; }
+    }
+
+    private static string Describe(Exception ex) => ex switch
+    {
+        TaskCanceledException => "(The wiki took too long to answer.)",
+        System.Net.Http.HttpRequestException h => $"({h.Message})",
+        _ => $"({ex.Message})"
+    };
+
+    /// <summary>The stratagem list changed: re-resolve slot names, refresh cards, and re-arm with new codes.</summary>
+    private void OnCatalogChanged()
+    {
+        foreach (var vm in _slots)
+        {
+            var canonical = Stratagems.Find(vm.Stratagem)?.Name;
+            if (canonical != null && canonical != vm.Stratagem)
+            {
+                vm.PropertyChanged -= Slot_PropertyChanged;
+                vm.Stratagem = canonical;
+                vm.PropertyChanged += Slot_PropertyChanged;
+            }
+            vm.Refresh();
+        }
+        OnConfigChanged();
+        if (_engine.IsRunning) _engine.Load(BuildProfile()); // atomic swap, safe while armed
+    }
+
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         if (_engine.IsRunning) return;
         var original = _settings.Clone();
-        var dlg = new SettingsWindow(_settings.Clone(), op => _overlay?.SetOpacity(op)) { Owner = this };
-        if (dlg.ShowDialog() == true)
+        var dlg = new SettingsWindow(_settings.Clone(), op => _overlay?.SetOpacity(op),
+            _state.WikiAutoUpdate, WikiStatusText, () => UpdateFromWikiAsync(manual: true)) { Owner = this };
+        var ok = dlg.ShowDialog() == true;
+        if (ok && dlg.WikiAutoUpdate != _state.WikiAutoUpdate)
+        {
+            _state.WikiAutoUpdate = dlg.WikiAutoUpdate;
+            _state.Save();
+        }
+        if (ok)
         {
             _settings = dlg.Result;
             _dirty = true;
