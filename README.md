@@ -19,7 +19,7 @@ What 2.0 changes:
 
 ## Features
 
-- 12 slots with a searchable, categorised stratagem picker
+- 12 slots with a searchable, categorised stratagem picker with stratagem icons
 - Stratagem codes kept up to date from the Helldivers 2 wiki
 - Profiles (v1.x profiles load as-is)
 - Master arm/disarm toggle key
@@ -44,6 +44,8 @@ GitHub Actions also builds `SCS.exe` on every push. Open the **Actions** tab, th
 SCS keeps its stratagem list current using the [Helldivers 2 wiki](https://helldivers.wiki.gg). On startup it checks the wiki at most once a day, adds any new stratagems, and updates codes that changed. The result is saved to `stratagem_cache.json` next to the exe, so it keeps working offline. The built-in list is the fallback if the wiki can't be reached.
 
 Your profiles stay valid when names change: if the wiki's name for a stratagem differs from SCS's (for example "A/AC-8 Autocannon Sentry" vs "Autocannon Sentry"), SCS keeps its own name and accepts the wiki name as an alias.
+
+Icons come from the wiki too. SCS ships with the current set built in, and the sync downloads icons for stratagems added later into `stratagem_icons` next to the exe.
 
 You can turn automatic checks off or run an update yourself in **Settings > Stratagem codes**.
 

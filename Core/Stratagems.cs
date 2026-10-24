@@ -8,6 +8,8 @@ public sealed record Stratagem(string Name, string Code, string Category)
 {
     public string? Alias { get; init; }
     public bool FromWiki { get; init; }
+    /// <summary>Wiki icon file name, when the wiki provided one.</summary>
+    public string? IconFile { get; init; }
     public string SearchText => Alias == null ? Name : Name + " " + Alias;
     public string Subtitle => (Alias == null ? Category : $"{Category}   /   wiki: {Alias}").ToUpperInvariant();
 }
@@ -177,11 +179,12 @@ public static class Stratagems
                 Code = w.Code,
                 Alias = Norm(w.Title) == Norm(b.Name) ? null : w.Title,
                 FromWiki = true,
+                IconFile = w.Icon,
             };
         }
         foreach (var w in pending)
         {
-            final.Add(new Stratagem(w.Title, w.Code, w.Category) { FromWiki = true });
+            final.Add(new Stratagem(w.Title, w.Code, w.Category) { FromWiki = true, IconFile = w.Icon });
             added.Add(w.Title);
         }
 

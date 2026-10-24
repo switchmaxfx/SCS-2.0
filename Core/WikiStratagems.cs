@@ -18,7 +18,8 @@ namespace SCS.Core;
 /// </summary>
 public static class WikiStratagems
 {
-    public sealed record Entry(string Title, string Code, string Category);
+    /// <summary>One wiki stratagem. <see cref="Icon"/> is the wiki's image file name (e.g. "Reinforce_Stratagem_Icon.svg").</summary>
+    public sealed record Entry(string Title, string Code, string Category, string? Icon = null);
 
     public sealed class CacheFile
     {
@@ -35,6 +36,16 @@ public static class WikiStratagems
     public static readonly TimeSpan AutoUpdateInterval = TimeSpan.FromHours(24);
 
     public static string CachePath => Path.Combine(AppContext.BaseDirectory, "stratagem_cache.json");
+    public static string IconDir => Path.Combine(AppContext.BaseDirectory, "stratagem_icons");
+    public const int IconSize = 72;
+
+    /// <summary>Local PNG path for a wiki icon file name (may not exist yet).</summary>
+    public static string IconPath(string wikiFile)
+    {
+        var name = Path.GetFileNameWithoutExtension(wikiFile.Replace(' ', '_'));
+        foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+        return Path.Combine(IconDir, name + ".png");
+    }
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
@@ -172,6 +183,7 @@ public static class WikiStratagems
 
     private static readonly Regex CodeTemplate = new(@"\{\{\s*Stratagem[ _]?code\s*\|([^}]+)\}\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex TypeField = new(@"\|\s*stratagem_type\s*=\s*([^\n|}]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ImageField = new(@"\|\s*(stratagem_image|image)\s*=\s*([^\n|}]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex LangSubpage = new(@"/[a-z]{2}(?:-[a-z]{2})?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     internal static bool IsExcluded(string title)
@@ -224,11 +236,112 @@ public static class WikiStratagems
         _ => "Mission", // Ship, Objective, Other, Mission...
     };
 
+    /// <summary>Icon file from the infobox. Prefers stratagem_image over the generic image field.</summary>
+    internal static string? ParseIcon(string wikitext)
+    {
+        string? fallback = null;
+        foreach (Match m in ImageField.Matches(wikitext))
+        {
+            var file = m.Groups[2].Value.Trim();
+            if (file.StartsWith("File:", StringComparison.OrdinalIgnoreCase)) file = file[5..];
+            var ext = Path.GetExtension(file).ToLowerInvariant();
+            if (ext is not (".svg" or ".png" or ".webp")) continue;
+            if (m.Groups[1].Value.Equals("stratagem_image", StringComparison.OrdinalIgnoreCase)) return file;
+            fallback ??= file;
+        }
+        return fallback;
+    }
+
     internal static Entry? ParsePage(string title, string wikitext)
     {
         var code = ParseCode(wikitext);
         var cat = MapCategory(ParseType(wikitext));
         if (code == null || cat == null || code.Length > 12) return null;
-        return new Entry(title.Trim(), code, cat);
+        return new Entry(title.Trim(), code, cat, ParseIcon(wikitext));
     }
+
+    // ------------------------------------------------------------------ icons
+
+    /// <summary>
+    /// Downloads PNG renders of the given entries' icons into <see cref="IconDir"/>, skipping any already on
+    /// disk. The wiki stores icons as SVG; asking for a thumbnail width makes it hand back a ready PNG.
+    /// Returns how many were downloaded. Individual failures are skipped, not fatal.
+    /// </summary>
+    public static async Task<int> FetchIconsAsync(IEnumerable<Entry> entries, CancellationToken ct = default)
+    {
+        var files = entries.Select(e => e.Icon).Where(f => f != null && !File.Exists(IconPath(f!)))
+                           .Select(f => f!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (files.Count == 0) return 0;
+        Directory.CreateDirectory(IconDir);
+
+        using var http = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
+        {
+            Timeout = TimeSpan.FromSeconds(25)
+        };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+
+        // 1) Resolve file names to thumbnail URLs, 50 per request.
+        var urls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < files.Count; i += BatchSize)
+        {
+            var batch = files.Skip(i).Take(BatchSize).ToList();
+            var query = new Dictionary<string, string>
+            {
+                ["action"] = "query",
+                ["titles"] = string.Join("|", batch.Select(f => "File:" + f)),
+                ["prop"] = "imageinfo",
+                ["iiprop"] = "url",
+                ["iiurlwidth"] = IconSize.ToString(),
+                ["format"] = "json",
+                ["maxlag"] = "5",
+            };
+            try
+            {
+                using var doc = await GetJsonAsync(http, query, ct);
+                if (doc.RootElement.TryGetProperty("query", out var q))
+                {
+                    // MediaWiki may normalize "A_B.svg" to "A B.svg"; map results back to what we asked for.
+                    var asked = batch.ToDictionary(f => Squash(f), f => f, StringComparer.OrdinalIgnoreCase);
+                    if (q.TryGetProperty("pages", out var pages))
+                        foreach (var page in pages.EnumerateObject())
+                        {
+                            var p = page.Value;
+                            var title = p.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
+                            if (title.StartsWith("File:")) title = title[5..];
+                            if (!asked.TryGetValue(Squash(title), out var original)) continue;
+                            if (p.TryGetProperty("imageinfo", out var ii) && ii.GetArrayLength() > 0)
+                            {
+                                var info = ii[0];
+                                var url = info.TryGetProperty("thumburl", out var tu) ? tu.GetString()
+                                        : info.TryGetProperty("url", out var u) ? u.GetString() : null;
+                                if (!string.IsNullOrEmpty(url) && !url.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                                    urls[original] = url;
+                            }
+                        }
+                }
+            }
+            catch (Exception) when (!ct.IsCancellationRequested) { /* skip this batch */ }
+            await Task.Delay(RequestDelay, ct);
+        }
+
+        // 2) Download them, gently.
+        int downloaded = 0;
+        foreach (var (file, url) in urls)
+        {
+            try
+            {
+                var bytes = await http.GetByteArrayAsync(url, ct);
+                if (bytes.Length < 8 || bytes[0] != 0x89 || bytes[1] != (byte)'P') continue; // PNG only
+                var dest = IconPath(file);
+                await File.WriteAllBytesAsync(dest + ".tmp", bytes, ct);
+                File.Move(dest + ".tmp", dest, overwrite: true);
+                downloaded++;
+            }
+            catch (Exception) when (!ct.IsCancellationRequested) { }
+            await Task.Delay(100, ct);
+        }
+        return downloaded;
+    }
+
+    private static string Squash(string file) => file.Replace('_', ' ').Trim();
 }

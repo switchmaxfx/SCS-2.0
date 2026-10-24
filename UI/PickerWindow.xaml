@@ -3,9 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:SCS.UI"
         xmlns:core="clr-namespace:SCS.Core"
-        Width="560" Height="620" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Width="600" Height="660" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
         UseLayoutRounding="True" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource UiFont}" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ui:StratagemIconConverter x:Key="StratagemIcon"/>
+    </Window.Resources>
 
     <Border Margin="16" CornerRadius="12" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderHiBrush}"
             BorderThickness="1" Effect="{StaticResource WindowShadow}">
@@ -41,14 +45,21 @@
                     <DataTemplate DataType="{x:Type core:Stratagem}">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
+                            <!-- icon; the empty frame shows through when a stratagem has no icon yet -->
+                            <Border Width="36" Height="36" CornerRadius="5" Margin="0,0,12,0" VerticalAlignment="Center"
+                                    BorderBrush="{StaticResource BorderHiBrush}" BorderThickness="1" Background="{StaticResource InputBrush}">
+                                <Image Source="{Binding Converter={StaticResource StratagemIcon}}" Margin="-1"
+                                       RenderOptions.BitmapScalingMode="HighQuality" Stretch="Uniform"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Caption}" FontSize="9.5" Margin="0,2,0,0"/>
                             </StackPanel>
-                            <ui:ArrowStrip Grid.Column="1" Code="{Binding Code}" GlyphSize="11" Fill="{StaticResource AccentBrush}"
+                            <ui:ArrowStrip Grid.Column="2" Code="{Binding Code}" GlyphSize="11" Fill="{StaticResource AccentBrush}"
                                            VerticalAlignment="Center" Margin="12,0,0,0"/>
                         </Grid>
                     </DataTemplate>

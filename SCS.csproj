@@ -22,6 +22,8 @@
   <ItemGroup>
     <Resource Include="icon.ico" />
     <Resource Include="Assets\icon64.png" />
+    <!-- Stratagem icons rendered from the Helldivers 2 wiki's SVGs; names are the normalized wiki titles -->
+    <Resource Include="Assets\Icons\*.png" />
   </ItemGroup>
 
   <!-- Single-file, self-contained publish: no .NET install needed on the target PC -->

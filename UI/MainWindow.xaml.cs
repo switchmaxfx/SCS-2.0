@@ -429,6 +429,22 @@ public partial class MainWindow : Window
                 msg = string.Join("   ", parts);
             }
             if (manual || !_engine.IsRunning || r.Added + r.CodesChanged > 0) SetStatus("WIKI SYNCED", msg, "OkBrush");
+
+            // Icons for stratagems the exe doesn't already carry an icon for (new ones since this build).
+            var needIcons = cache.Entries.Where(en => en.Icon != null && !IconStore.HasBundled(en.Title)).ToList();
+            if (needIcons.Count > 0)
+            {
+                try
+                {
+                    var got = await Task.Run(() => WikiStratagems.FetchIconsAsync(needIcons));
+                    if (got > 0)
+                    {
+                        IconStore.Invalidate();
+                        msg += $"   {got} new icon{(got == 1 ? "" : "s")}.";
+                    }
+                }
+                catch { /* icons are cosmetic; codes are already updated */ }
+            }
             return msg;
         }
         catch (Exception ex)
