@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private LedWindow? _led;
     private readonly Storyboard _pulse;
     private DateTime? _lastWikiFetch;
+    private readonly WikiStratagems.CacheFile? wikiCacheAtStart;
     private bool _wikiBusy;
 
     public MainWindow()
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         // Codes saved from the last wiki update, merged over the built-in list before any profile loads.
         var wikiCache = WikiStratagems.LoadCache();
         if (wikiCache != null) Stratagems.ApplyWiki(wikiCache.Entries);
+        wikiCacheAtStart = wikiCache;
         _lastWikiFetch = wikiCache?.FetchedUtc;
         Stratagems.Changed += () => Dispatcher.InvokeAsync(OnCatalogChanged);
 
@@ -82,6 +84,13 @@ public partial class MainWindow : Window
         {
             var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             t.Tick += async (_, _) => { t.Stop(); await UpdateFromWikiAsync(manual: false); };
+            t.Start();
+        }
+        else if (_state.WikiAutoUpdate && wikiCacheAtStart != null)
+        {
+            // Codes are fresh, but fill in any icons a previous update couldn't download.
+            var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            t.Tick += async (_, _) => { t.Stop(); await FetchMissingIconsAsync(wikiCacheAtStart.Entries); };
             t.Start();
         }
     }
@@ -430,31 +439,45 @@ public partial class MainWindow : Window
             }
             if (manual || !_engine.IsRunning || r.Added + r.CodesChanged > 0) SetStatus("WIKI SYNCED", msg, "OkBrush");
 
-            // Icons for stratagems the exe doesn't already carry an icon for (new ones since this build).
-            var needIcons = cache.Entries.Where(en => en.Icon != null && !IconStore.HasBundled(en.Title)).ToList();
-            if (needIcons.Count > 0)
-            {
-                try
-                {
-                    var got = await Task.Run(() => WikiStratagems.FetchIconsAsync(needIcons));
-                    if (got > 0)
-                    {
-                        IconStore.Invalidate();
-                        msg += $"   {got} new icon{(got == 1 ? "" : "s")}.";
-                    }
-                }
-                catch { /* icons are cosmetic; codes are already updated */ }
-            }
+            var got = await FetchMissingIconsAsync(cache.Entries);
+            if (got > 0) msg += $"   {got} new icon{(got == 1 ? "" : "s")}.";
             return msg;
         }
         catch (Exception ex)
         {
             var msg = "Couldn't update from the wiki, so the saved list is still in use. " + Describe(ex);
+            WikiStratagems.Log($"code update failed: {ex.GetType().Name}: {ex.Message}");
             if (manual) SetStatus("WIKI OFFLINE", "couldn't reach the wiki, using the saved list", "DangerBrush");
             else if (!_engine.IsRunning) UpdateArmedVisuals();
             return msg;
         }
         finally { _wikiBusy = false; }
+    }
+
+    /// <summary>
+    /// Downloads icons for stratagems the exe doesn't carry an icon for (ones added since this build),
+    /// then refreshes the picker and cards. Already-downloaded icons are skipped, so this is cheap to repeat.
+    /// </summary>
+    private async Task<int> FetchMissingIconsAsync(IEnumerable<WikiStratagems.Entry> entries)
+    {
+        var need = entries.Where(en => en.Icon != null && !IconStore.HasBundled(en.Title)
+                                       && !File.Exists(WikiStratagems.IconPath(en.Icon))).ToList();
+        if (need.Count == 0) return 0;
+        try
+        {
+            var got = await Task.Run(() => WikiStratagems.FetchIconsAsync(need));
+            if (got > 0)
+            {
+                IconStore.Invalidate();
+                foreach (var vm in _slots) vm.Refresh();
+            }
+            return got;
+        }
+        catch (Exception ex)
+        {
+            WikiStratagems.Log($"icon download failed: {ex.GetType().Name}: {ex.Message}");
+            return 0; // icons are cosmetic; codes are already updated
+        }
     }
 
     private static string Describe(Exception ex) => ex switch

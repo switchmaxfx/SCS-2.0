@@ -29,6 +29,7 @@ public sealed class SlotViewModel : INotifyPropertyChanged
                 OnChanged(nameof(Category));
                 OnChanged(nameof(IsEmpty));
                 OnChanged(nameof(DisplayName));
+                OnChanged(nameof(Icon));
             }
         }
     }
@@ -49,7 +50,11 @@ public sealed class SlotViewModel : INotifyPropertyChanged
         OnChanged(nameof(Category));
         OnChanged(nameof(IsEmpty));
         OnChanged(nameof(DisplayName));
+        OnChanged(nameof(Icon));
     }
+
+    /// <summary>Stratagem icon, or null for an empty slot / no icon available.</summary>
+    public System.Windows.Media.ImageSource? Icon => IconStore.Get(Stratagems.Find(_stratagem));
 
     public bool IsEmpty => Stratagems.Find(_stratagem) == null;
     public string DisplayName => IsEmpty ? "SELECT STRATAGEM" : _stratagem;

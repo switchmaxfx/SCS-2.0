@@ -131,6 +131,7 @@ public static class WikiStratagems
             throw new InvalidOperationException("The wiki answered, but no stratagem codes could be read from it. The saved list was kept.");
 
         progress?.Report($"Read {entries.Count} stratagems from the wiki.");
+        Log($"codes: {entries.Count} stratagems read from {pages.Count} pages");
         return new CacheFile { FetchedUtc = DateTime.UtcNow, Entries = entries.OrderBy(e => e.Title).ToList() };
     }
 
@@ -264,84 +265,70 @@ public static class WikiStratagems
 
     /// <summary>
     /// Downloads PNG renders of the given entries' icons into <see cref="IconDir"/>, skipping any already on
-    /// disk. The wiki stores icons as SVG; asking for a thumbnail width makes it hand back a ready PNG.
-    /// Returns how many were downloaded. Individual failures are skipped, not fatal.
+    /// disk. The wiki stores icons as SVG; Special:FilePath with a width redirects to a ready-made PNG
+    /// thumbnail, so each icon is a single plain request. Failures are logged and skipped, not fatal.
+    /// Returns how many were downloaded.
     /// </summary>
     public static async Task<int> FetchIconsAsync(IEnumerable<Entry> entries, CancellationToken ct = default)
     {
-        var files = entries.Select(e => e.Icon).Where(f => f != null && !File.Exists(IconPath(f!)))
-                           .Select(f => f!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var files = entries.Select(e => e.Icon).Where(f => !string.IsNullOrWhiteSpace(f) && !File.Exists(IconPath(f!)))
+                           .Select(f => f!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (files.Count == 0) return 0;
         Directory.CreateDirectory(IconDir);
 
-        using var http = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
+        using var http = new HttpClient(new HttpClientHandler
         {
-            Timeout = TimeSpan.FromSeconds(25)
-        };
+            AutomaticDecompression = DecompressionMethods.All,
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 5,
+        })
+        { Timeout = TimeSpan.FromSeconds(25) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+        http.DefaultRequestHeaders.Accept.ParseAdd("image/png"); // WPF can't decode WebP without an extra codec
 
-        // 1) Resolve file names to thumbnail URLs, 50 per request.
-        var urls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < files.Count; i += BatchSize)
+        int downloaded = 0, failed = 0;
+        foreach (var file in files.Take(200))
         {
-            var batch = files.Skip(i).Take(BatchSize).ToList();
-            var query = new Dictionary<string, string>
-            {
-                ["action"] = "query",
-                ["titles"] = string.Join("|", batch.Select(f => "File:" + f)),
-                ["prop"] = "imageinfo",
-                ["iiprop"] = "url",
-                ["iiurlwidth"] = IconSize.ToString(),
-                ["format"] = "json",
-                ["maxlag"] = "5",
-            };
+            var name = file.Replace(' ', '_');
+            var url = $"https://helldivers.wiki.gg/wiki/Special:FilePath/{Uri.EscapeDataString(name)}?width={IconSize}";
             try
             {
-                using var doc = await GetJsonAsync(http, query, ct);
-                if (doc.RootElement.TryGetProperty("query", out var q))
+                using var resp = await http.GetAsync(url, ct);
+                if (!resp.IsSuccessStatusCode) { Log($"icon {file}: HTTP {(int)resp.StatusCode} from {resp.RequestMessage?.RequestUri}"); failed++; continue; }
+                var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+                if (!IsPng(bytes))
                 {
-                    // MediaWiki may normalize "A_B.svg" to "A B.svg"; map results back to what we asked for.
-                    var asked = batch.ToDictionary(f => Squash(f), f => f, StringComparer.OrdinalIgnoreCase);
-                    if (q.TryGetProperty("pages", out var pages))
-                        foreach (var page in pages.EnumerateObject())
-                        {
-                            var p = page.Value;
-                            var title = p.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
-                            if (title.StartsWith("File:")) title = title[5..];
-                            if (!asked.TryGetValue(Squash(title), out var original)) continue;
-                            if (p.TryGetProperty("imageinfo", out var ii) && ii.GetArrayLength() > 0)
-                            {
-                                var info = ii[0];
-                                var url = info.TryGetProperty("thumburl", out var tu) ? tu.GetString()
-                                        : info.TryGetProperty("url", out var u) ? u.GetString() : null;
-                                if (!string.IsNullOrEmpty(url) && !url.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
-                                    urls[original] = url;
-                            }
-                        }
+                    Log($"icon {file}: not a PNG ({resp.Content.Headers.ContentType}, {bytes.Length} bytes) from {resp.RequestMessage?.RequestUri}");
+                    failed++; continue;
                 }
-            }
-            catch (Exception) when (!ct.IsCancellationRequested) { /* skip this batch */ }
-            await Task.Delay(RequestDelay, ct);
-        }
-
-        // 2) Download them, gently.
-        int downloaded = 0;
-        foreach (var (file, url) in urls)
-        {
-            try
-            {
-                var bytes = await http.GetByteArrayAsync(url, ct);
-                if (bytes.Length < 8 || bytes[0] != 0x89 || bytes[1] != (byte)'P') continue; // PNG only
                 var dest = IconPath(file);
                 await File.WriteAllBytesAsync(dest + ".tmp", bytes, ct);
                 File.Move(dest + ".tmp", dest, overwrite: true);
                 downloaded++;
             }
-            catch (Exception) when (!ct.IsCancellationRequested) { }
-            await Task.Delay(100, ct);
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                Log($"icon {file}: {ex.GetType().Name}: {ex.Message}");
+                failed++;
+            }
+            await Task.Delay(150, ct);
         }
+        Log($"icons: {downloaded} downloaded, {failed} failed, {files.Count} requested");
         return downloaded;
     }
 
-    private static string Squash(string file) => file.Replace('_', ' ').Trim();
+    private static bool IsPng(byte[] b) =>
+        b.Length > 8 && b[0] == 0x89 && b[1] == (byte)'P' && b[2] == (byte)'N' && b[3] == (byte)'G';
+
+    /// <summary>Small diagnostics log next to the exe (wiki_sync.log), kept short.</summary>
+    public static void Log(string line)
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "wiki_sync.log");
+            if (File.Exists(path) && new FileInfo(path).Length > 64 * 1024) File.Delete(path);
+            File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {line}{Environment.NewLine}");
+        }
+        catch { }
+    }
 }

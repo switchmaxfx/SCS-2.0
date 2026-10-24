@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:SCS.UI"
         Title="S.C.S  Stratagem Control System"
-        Width="1080" Height="600" MinWidth="1080" MinHeight="600"
+        Width="1080" Height="640" MinWidth="1080" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/icon.ico"
         WindowStyle="None" ResizeMode="CanMinimize"
@@ -25,7 +25,7 @@
         <!-- Slot card -->
         <DataTemplate x:Key="SlotTemplate" DataType="{x:Type ui:SlotViewModel}">
             <Border x:Name="Card" Margin="6" CornerRadius="10" Background="{StaticResource CardBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Height="178">
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Height="196">
                 <Border.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="CHANGE STRATAGEM" Click="SlotMenuChange_Click" Tag="{Binding}"/>
@@ -64,9 +64,22 @@
                                     <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock x:Name="NameText" Text="{Binding DisplayName}" TextWrapping="Wrap" VerticalAlignment="Center"
-                                           FontFamily="{StaticResource DisplayFont}" FontSize="14" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" MaxHeight="40" LineHeight="19"/>
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- stratagem icon; frame stays visible if a stratagem has no icon -->
+                                    <Border x:Name="IconFrame" Width="42" Height="42" CornerRadius="6" Margin="0,0,10,0"
+                                            VerticalAlignment="Center" BorderThickness="1"
+                                            BorderBrush="{StaticResource BorderHiBrush}" Background="{StaticResource InputBrush}">
+                                        <Image Source="{Binding Icon}" Margin="-1" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock x:Name="NameText" Grid.Column="1" Text="{Binding DisplayName}" TextWrapping="Wrap"
+                                               VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="13"
+                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxHeight="52" LineHeight="17"/>
+                                </Grid>
                                 <ui:ArrowStrip x:Name="Arrows" Grid.Row="1" Code="{Binding Code}" GlyphSize="11"
                                                Fill="{StaticResource AccentDimBrush}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
                             </Grid>
@@ -79,6 +92,7 @@
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsEmpty}" Value="True">
                     <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+                    <Setter TargetName="IconFrame" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="NameText" Property="FontSize" Value="11"/>
                     <Setter TargetName="NameText" Property="FontFamily" Value="{StaticResource MonoFont}"/>
                     <Setter TargetName="Cat" Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
@@ -95,6 +109,7 @@
                     <Setter TargetName="TopLine" Property="Opacity" Value="1"/>
                     <Setter TargetName="Arrows" Property="Fill" Value="{StaticResource AccentBrush}"/>
                     <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                    <Setter TargetName="IconFrame" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
