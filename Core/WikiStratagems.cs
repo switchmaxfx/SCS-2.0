@@ -39,12 +39,15 @@ public static class WikiStratagems
     public static string IconDir => Path.Combine(AppContext.BaseDirectory, "stratagem_icons");
     public const int IconSize = 72;
 
-    /// <summary>Local PNG path for a wiki icon file name (may not exist yet).</summary>
+    /// <summary>Local path for a wiki icon file (keeps its .svg/.png extension). May not exist yet.</summary>
     public static string IconPath(string wikiFile)
     {
-        var name = Path.GetFileNameWithoutExtension(wikiFile.Replace(' ', '_'));
+        var file = wikiFile.Trim().Replace(' ', '_');
+        var ext = Path.GetExtension(file).ToLowerInvariant();
+        if (ext is not (".svg" or ".png")) ext = ".svg";
+        var name = Path.GetFileNameWithoutExtension(file);
         foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
-        return Path.Combine(IconDir, name + ".png");
+        return Path.Combine(IconDir, name + ext);
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
@@ -264,10 +267,10 @@ public static class WikiStratagems
     // ------------------------------------------------------------------ icons
 
     /// <summary>
-    /// Downloads PNG renders of the given entries' icons into <see cref="IconDir"/>, skipping any already on
-    /// disk. The wiki stores icons as SVG; Special:FilePath with a width redirects to a ready-made PNG
-    /// thumbnail, so each icon is a single plain request. Failures are logged and skipped, not fatal.
-    /// Returns how many were downloaded.
+    /// Downloads the given entries' icons into <see cref="IconDir"/>, skipping any already on disk.
+    /// wiki.gg serves the original SVG files, which SCS draws itself (see <see cref="SvgIcon"/>), so each
+    /// icon is one small request (~2 KB). A file is only kept if it is a PNG or an SVG SCS can actually read.
+    /// Failures are logged and skipped, not fatal. Returns how many were downloaded.
     /// </summary>
     public static async Task<int> FetchIconsAsync(IEnumerable<Entry> entries, CancellationToken ct = default)
     {
@@ -284,24 +287,25 @@ public static class WikiStratagems
         })
         { Timeout = TimeSpan.FromSeconds(25) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-        http.DefaultRequestHeaders.Accept.ParseAdd("image/png"); // WPF can't decode WebP without an extra codec
 
         int downloaded = 0, failed = 0;
         foreach (var file in files.Take(200))
         {
-            var name = file.Replace(' ', '_');
-            var url = $"https://helldivers.wiki.gg/wiki/Special:FilePath/{Uri.EscapeDataString(name)}?width={IconSize}";
+            var url = $"https://helldivers.wiki.gg/wiki/Special:FilePath/{Uri.EscapeDataString(file.Replace(' ', '_'))}";
             try
             {
                 using var resp = await http.GetAsync(url, ct);
                 if (!resp.IsSuccessStatusCode) { Log($"icon {file}: HTTP {(int)resp.StatusCode} from {resp.RequestMessage?.RequestUri}"); failed++; continue; }
                 var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
-                if (!IsPng(bytes))
+                var dest = IconPath(file);
+                bool ok = dest.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                    ? IsPng(bytes)
+                    : bytes.Length < 1_000_000 && SvgIcon.Parse(System.Text.Encoding.UTF8.GetString(bytes)) != null;
+                if (!ok)
                 {
-                    Log($"icon {file}: not a PNG ({resp.Content.Headers.ContentType}, {bytes.Length} bytes) from {resp.RequestMessage?.RequestUri}");
+                    Log($"icon {file}: unreadable ({resp.Content.Headers.ContentType}, {bytes.Length} bytes) from {resp.RequestMessage?.RequestUri}");
                     failed++; continue;
                 }
-                var dest = IconPath(file);
                 await File.WriteAllBytesAsync(dest + ".tmp", bytes, ct);
                 File.Move(dest + ".tmp", dest, overwrite: true);
                 downloaded++;

@@ -39,7 +39,15 @@ public static class IconStore
         if (s.IconFile != null)
         {
             var path = WikiStratagems.IconPath(s.IconFile);
-            if (File.Exists(path))
+            if (File.Exists(path) && path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (SvgIcon.Parse(File.ReadAllText(path)) is { } svg && Rasterize(svg) is { } img) return img;
+                }
+                catch { /* unreadable: fall through to the built-in icon */ }
+            }
+            else if (File.Exists(path))
             {
                 try
                 {
@@ -68,6 +76,44 @@ public static class IconStore
             catch { }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Draws a parsed SVG icon into a small frozen bitmap once, so lists never re-render vector paths.
+    /// </summary>
+    private static ImageSource? Rasterize(SvgIcon.Icon svg)
+    {
+        var viewBox = new Rect(svg.X, svg.Y, svg.Width, svg.Height);
+        var group = new DrawingGroup { ClipGeometry = new RectangleGeometry(viewBox) };
+        // Transparent backdrop the size of the viewBox, so the image keeps the icon's real proportions.
+        group.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(viewBox)));
+        foreach (var shape in svg.Shapes)
+        {
+            try
+            {
+                var geo = Geometry.Parse((shape.EvenOdd ? "F0 " : "F1 ") + shape.PathData);
+                if (geo.IsFrozen) geo = geo.Clone();
+                var m = shape.Matrix;
+                geo.Transform = new MatrixTransform(new Matrix(m[0], m[1], m[2], m[3], m[4], m[5]));
+                var a = shape.Argb;
+                var brush = new SolidColorBrush(Color.FromArgb((byte)(a >> 24), (byte)(a >> 16), (byte)(a >> 8), (byte)a));
+                group.Children.Add(new GeometryDrawing(brush, null, geo));
+            }
+            catch { /* skip a shape WPF can't parse rather than lose the whole icon */ }
+        }
+        if (group.Children.Count <= 1) return null;
+        group.Freeze();
+
+        const int px = WikiStratagems.IconSize;
+        double scale = Math.Min(px / svg.Width, px / svg.Height);
+        double w = svg.Width * scale, h = svg.Height * scale;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+            dc.DrawImage(new DrawingImage(group), new Rect((px - w) / 2, (px - h) / 2, w, h));
+        var bmp = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(visual);
+        bmp.Freeze();
+        return bmp;
     }
 
     private static string? BundledKey(string name)
