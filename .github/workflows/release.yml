@@ -1,0 +1,29 @@
+# Pushing a tag like v2.01 builds SCS.exe from that exact commit on GitHub's Windows
+# runners and publishes it as a release, with notes from .github/release-notes/<tag>.md.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet publish SCS.csproj -c Release -o out
+      - name: SHA-256 of the exe
+        shell: pwsh
+        run: (Get-FileHash out/SCS.exe -Algorithm SHA256).Hash.ToLower() + "  SCS.exe" | Out-File -Encoding ascii out/SCS.exe.sha256
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          notes=".github/release-notes/${tag}.md"
+          [ -f "$notes" ] || echo "SCS ${tag#v}" > "$notes"
+          gh release create "$tag" out/SCS.exe out/SCS.exe.sha256 --title "SCS ${tag#v}" --notes-file "$notes"

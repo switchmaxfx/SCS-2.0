@@ -30,7 +30,9 @@ What 2.0 changes:
 
 ## Download
 
-A prebuilt `publish/SCS.exe` (Windows x64, single self-contained file) is included in this repo.
+Get the latest `SCS.exe` from the [Releases](https://github.com/switchmaxfx/SCS-2.0/releases) page. It is a single self-contained file for Windows x64. Each release exe is built by GitHub Actions from that release's source and comes with a SHA-256 checksum.
+
+A prebuilt copy is also kept at `publish/SCS.exe` in this repo.
 
 ## Build
 

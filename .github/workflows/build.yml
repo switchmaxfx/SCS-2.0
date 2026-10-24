@@ -1,7 +1,10 @@
 # Optional: push this folder to a GitHub repo and every push builds SCS.exe for you
 # (Actions tab -> latest run -> Artifacts -> SCS).
 name: build
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: windows-latest
