@@ -1,4 +1,4 @@
-# SCS 2.0 — Stratagem Control System
+# SCS 2.0: Stratagem Control System
 
 A stratagem macro for **Helldivers 2**, rewritten from Python into C# / .NET 8 (WPF) so it doesn't drop inputs when the game lags.
 
@@ -19,7 +19,8 @@ What 2.0 changes:
 
 ## Features
 
-- 12 slots with a searchable, categorised stratagem picker with stratagem icons
+- 12 slots with a searchable, categorised stratagem picker
+- Stratagem icons in the picker and on every slot card
 - Stratagem codes kept up to date from the Helldivers 2 wiki
 - Profiles (v1.x profiles load as-is)
 - Master arm/disarm toggle key
@@ -45,7 +46,7 @@ SCS keeps its stratagem list current using the [Helldivers 2 wiki](https://helld
 
 Your profiles stay valid when names change: if the wiki's name for a stratagem differs from SCS's (for example "A/AC-8 Autocannon Sentry" vs "Autocannon Sentry"), SCS keeps its own name and accepts the wiki name as an alias.
 
-Icons come from the wiki too. SCS ships with the current set built in, and the sync downloads icons for stratagems added later into `stratagem_icons` next to the exe.
+Icons come from the wiki too. SCS ships with the current set built in. For stratagems added later, the sync downloads the wiki's SVG icon (a couple of KB each) into `stratagem_icons` next to the exe, and SCS draws it itself. Each icon is downloaded once.
 
 You can turn automatic checks off or run an update yourself in **Settings > Stratagem codes**.
 
@@ -61,7 +62,15 @@ The fallback list lives in `Core/Stratagems.cs`. Add a line to the right categor
 
 `U`/`D`/`L`/`R` are the arrows in order. Rebuild afterwards.
 
+## Network use
+
+SCS works fully offline. Arming and firing stratagems never use the network.
+
+The only site SCS contacts is `helldivers.wiki.gg`, and only to read public stratagem pages and icons: about 3 requests at startup at most once a day, plus one small download per missing icon. Nothing about you or your PC is sent. Turn it off in **Settings > Stratagem codes**, and check `wiki_sync.log` next to the exe for a record of what was downloaded.
+
 ## Notes
 
 - If Helldivers 2 runs as administrator, run SCS as administrator too.
 - The overlay and LED only show over the game in borderless or windowed mode.
+- Only one copy of SCS can run at a time, which prevents double inputs.
+- Profiles from v1.x load as they are, and profiles saved in 2.0 still open in v1.4.
